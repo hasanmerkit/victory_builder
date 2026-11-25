@@ -311,7 +311,7 @@ exit /b %BuildResult%
 :VICTORY_POWERSHELL
 $ErrorActionPreference = 'Stop'
 function Info([string]$message) { Write-Host ($env:_info_ + ' ' + $message) }
-function Fail([string]$message) { throw $message }
+function Fail([string]$message) { $script:ExpectedFailure = $true; throw $message }
 function Native([string]$exe, [string[]]$arguments) {
     $ErrorActionPreference = 'Continue'
     & $exe @arguments >> $log 2>&1
@@ -397,7 +397,10 @@ try {
     if (!(ValidDeps)) { $missing += $depsName }
     foreach ($name in $missing) {
         $bundle = "$root\compiler\windows\$name.7z"
-        if (!(Test-Path -LiteralPath $bundle)) { Fail "Missing tool: $name. Restore bundle: $bundle" }
+        if (!(Test-Path -LiteralPath $bundle)) {
+            if ($name -eq $depsName) { Fail "Missing offline dependency bundle: $bundle. This source revision needs its matching Cargo dependency package." }
+            Fail "Missing tool: $name. Restore bundle: $bundle"
+        }
     }
     $needSeven = (Test-Path -LiteralPath $bundledSeven) -and !(Test-Path -LiteralPath $sharedSeven)
     if ($installOnly) {
@@ -419,13 +422,14 @@ try {
     }
     if ($missing.Count -gt 0 -or $needSeven) {
         Info 'Installing: missing shared build tools'
-        $script = ([IO.File]::ReadAllText($env:VICTORY_BUILD_FILE) -split '(?m)^:VICTORY_POWERSHELL\r?$',2)[1]
         $prefix = '$installOnly=$true;'
         foreach ($key in @('root','work','log','seven','bundledSeven','sharedSeven')) {
             $value = (Get-Variable -Name $key -ValueOnly).Replace("'", "''")
             $prefix += '$' + $key + "='" + $value + "';"
         }
-        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($prefix + $script))
+        $buildPath = $env:VICTORY_BUILD_FILE.Replace("'", "''")
+        $child = $prefix + '$text=[IO.File]::ReadAllText(''' + $buildPath + '''); & ([scriptblock]::Create(($text -split ''(?m)^:VICTORY_POWERSHELL\r?$'',2)[1]))'
+        $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($child))
         try { $process = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand',$encoded) -PassThru -Wait }
         catch { Fail 'Admin permission required for installing required tools to TeTeOS.Net Toolchains.' }
         if ($process.ExitCode -ne 0) { Fail 'Shared tool installation failed. Admin permission required for installing required tools to TeTeOS.Net Toolchains.' }
@@ -486,7 +490,9 @@ try {
     Write-Host ('[X] ' + $_.Exception.Message)
     if ($log -and (Test-Path -LiteralPath $log)) {
         Write-Host "[X] Full log: $log"
-        Get-Content -LiteralPath $log -Tail 100 | Where-Object { $_ -notmatch '^warning:|^\s*--> |^\s*\||^\s*[0-9]+\s*\|' } | ForEach-Object { Write-Host $_ }
+        if (!$script:ExpectedFailure) {
+            Get-Content -LiteralPath $log -Tail 100 | Where-Object { $_ -notmatch '^warning:|^\s*--> |^\s*\||^\s*[0-9]+\s*\|' } | ForEach-Object { Write-Host $_ }
+        }
     }
     exit 1
 }

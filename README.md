@@ -54,6 +54,7 @@ The following local source snapshots were successfully built on Windows x64 on N
 | VItoriaBr | `bfbbb8b827f71a48` | Passed | Passed |
 | victory-fork | `bfbbb8b827f71a48` | Passed | Passed |
 | ztrx | `13bb91f9d2816440` | Passed | Passed |
+| Additional AMD fork snapshot | `8fe9aa596db3f767` | Passed | Passed |
 
 These results apply to the tested snapshots. A newer revision may change dependencies or require additional tools. Successful compilation and CLI checks do not establish that a particular game build will start or run correctly. Game execution and bootstrap on a fresh Windows installation were not part of this validation.
 
