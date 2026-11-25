@@ -32,7 +32,7 @@ build.cmd
 README.md
 ```
 
-The toolkit repository is intended to ship with an empty `source/` directory. Populate it locally with your selected project. Git does not track empty directories; create `source/` if your download or checkout does not contain it.
+The toolkit ships with a `source/` directory containing only an empty `.keep` placeholder. Copy your selected project into that directory.
 
 ## Requirements
 
@@ -145,7 +145,7 @@ git lfs install
 build.cmd
 ```
 
-A Git LFS pointer file is not a usable compiler archive. If downloading a repository ZIP, check that the compiler files contain the actual archives. See [GitHub's large-file documentation](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
+Use GitHub Code > Download ZIP for a complete toolkit download. GitHub archive downloads are configured to include the actual compiler archives, so ZIP users do not need Git or Git LFS. A Git LFS pointer file is not a usable compiler archive. Previously downloaded ZIP files must be downloaded again. See [GitHub's large-file documentation](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
 
 ## License
 
