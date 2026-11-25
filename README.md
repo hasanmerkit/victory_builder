@@ -8,7 +8,7 @@ VIctory is a compatibility layer that runs Xbox Series X|S game code on Windows 
 
 ## Quick start
 
-1. Download or clone the complete toolkit, including `compiler/`.
+1. Download [victory_builder.zip](https://github.com/hasanmerkit/victory_builder/releases/latest/download/victory_builder.zip), or clone the repository with Git LFS.
 2. Download the VIctory project you want to build.
 3. Copy the contents of its actual Cargo workspace into `source/`. The file `source/Cargo.toml` must exist directly at that location.
 4. Run `build.cmd` from the toolkit root. If a required shared tool is missing, approve its installation when Windows requests administrator permission.
@@ -145,7 +145,7 @@ git lfs install
 build.cmd
 ```
 
-Use GitHub Code > Download ZIP for a complete toolkit download. GitHub archive downloads are configured to include the actual compiler archives, so ZIP users do not need Git or Git LFS. A Git LFS pointer file is not a usable compiler archive. Previously downloaded ZIP files must be downloaded again. See [GitHub's large-file documentation](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
+For a complete download without Git, use [victory_builder.zip from Releases](https://github.com/hasanmerkit/victory_builder/releases/latest/download/victory_builder.zip). This package contains real compiler archives and the source/ directory. The Code > Download ZIP archive may contain LFS pointer files instead of compiler archives and is not the recommended download. ZIP package users do not need Git or Git LFS. See [GitHub's large-file documentation](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github).
 
 ## License
 
