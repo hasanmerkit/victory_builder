@@ -372,12 +372,8 @@ try {
     $tools = Join-Path $env:ProgramFiles 'TeTeOS.Net\toolchains'
     $rustName = 'rust-1.100.0-sdk-windows-x64'
     $msvcName = 'msvc-14.51.36231-sdk-10.0.28000.0-windows-x64-x86-x64'
-    $sha = [Security.Cryptography.SHA256]::Create()
-    try { $lockHash = ([BitConverter]::ToString($sha.ComputeHash([IO.File]::ReadAllBytes("$root\source\Cargo.lock")))).Replace('-','').Substring(0,16).ToLowerInvariant() } finally { $sha.Dispose() }
-    $depsName = 'victory-deps-' + $lockHash
     $rust = Join-Path $tools $rustName
     $msvc = Join-Path $tools $msvcName
-    $deps = Join-Path $tools $depsName
     $vc = "$msvc\VC\Tools\MSVC\14.51.36231"
     $sdk = "$msvc\WindowsKits\10"
     $sdkVersion = '10.0.28000.0'
@@ -390,17 +386,12 @@ try {
         }
         return $true
     }
-    function ValidDeps { return ((Test-Path "$deps\vendor" -PathType Container) -and (Test-Path "$deps\licenses.md" -PathType Leaf)) }
     $missing = @()
     if (!(ValidRust)) { $missing += $rustName }
     if (!(ValidMsvc)) { $missing += $msvcName }
-    if (!(ValidDeps)) { $missing += $depsName }
     foreach ($name in $missing) {
         $bundle = "$root\compiler\windows\$name.7z"
-        if (!(Test-Path -LiteralPath $bundle)) {
-            if ($name -eq $depsName) { Fail "Missing offline dependency bundle: $bundle. This source revision needs its matching Cargo dependency package." }
-            Fail "Missing tool: $name. Restore bundle: $bundle"
-        }
+        if (!(Test-Path -LiteralPath $bundle)) { Fail "Missing tool: $name. Restore bundle: $bundle" }
     }
     $needSeven = (Test-Path -LiteralPath $bundledSeven) -and !(Test-Path -LiteralPath $sharedSeven)
     if ($installOnly) {
@@ -417,7 +408,7 @@ try {
                 [Environment]::SetEnvironmentVariable('Path', ($machinePath.TrimEnd(';') + ';' + $sharedBin), 'Machine')
             }
         }
-        if (!(ValidRust) -or !(ValidMsvc) -or !(ValidDeps)) { Fail 'Installed toolchain verification failed.' }
+        if (!(ValidRust) -or !(ValidMsvc)) { Fail 'Installed toolchain verification failed.' }
         exit 0
     }
     if ($missing.Count -gt 0 -or $needSeven) {
@@ -433,7 +424,7 @@ try {
         try { $process = Start-Process powershell.exe -Verb RunAs -WindowStyle Hidden -ArgumentList @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-EncodedCommand',$encoded) -PassThru -Wait }
         catch { Fail 'Admin permission required for installing required tools to TeTeOS.Net Toolchains.' }
         if ($process.ExitCode -ne 0) { Fail 'Shared tool installation failed. Admin permission required for installing required tools to TeTeOS.Net Toolchains.' }
-        if (!(ValidRust) -or !(ValidMsvc) -or !(ValidDeps)) { Fail 'Installed toolchain verification failed.' }
+        if (!(ValidRust) -or !(ValidMsvc)) { Fail 'Installed toolchain verification failed.' }
     }
     $env:PATH = "$rust\bin;$vc\bin\Hostx64\x64;$sdk\bin\$sdkVersion\x64;" + $env:PATH
     $env:INCLUDE = "$vc\include;$sdk\Include\$sdkVersion\ucrt;$sdk\Include\$sdkVersion\shared;$sdk\Include\$sdkVersion\um;$sdk\Include\$sdkVersion\winrt"
@@ -447,11 +438,10 @@ try {
     $env:RUSTFLAGS = $null
     $env:RUSTUP_TOOLCHAIN = $null
     Set-Location -LiteralPath "$root\source"
-    $vendorPath = "$deps\vendor".Replace('\','/')
-    $cargoArgs = @('--config',"source.crates-io.replace-with='vendored-sources'",'--config',("source.vendored-sources.directory='" + $vendorPath + "'"))
+    $cargoArgs = @()
     Info 'Inspecting: source workspace'
     $ErrorActionPreference = 'Continue'
-    $metadataJson = & "$rust\bin\cargo.exe" @cargoArgs metadata --no-deps --format-version 1 --locked --offline 2>> $log | Out-String
+    $metadataJson = & "$rust\bin\cargo.exe" @cargoArgs metadata --no-deps --format-version 1 2>> $log | Out-String
     $metadataExit = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($metadataExit -ne 0) { Fail 'Cargo workspace inspection failed.' }
@@ -470,7 +460,7 @@ try {
     if ($selected.Count -eq 0 -and $binaries.Count -eq 1) { $selected = $binaries }
     if ($selected.Count -ne 1) { Fail 'Cannot select a unique application binary from source/Cargo.toml.' }
     $application = $selected[0]
-    $buildArgs = $cargoArgs + @('build','--release','--locked','--offline','--target','x86_64-pc-windows-msvc','--package',$application.Package,'--bin',$application.Name)
+    $buildArgs = @('build','--release','--target','x86_64-pc-windows-msvc','--package',$application.Package,'--bin',$application.Name)
     if ($application.RequiredFeatures.Count -gt 0) { $buildArgs += @('--features',($application.RequiredFeatures -join ',')) }
     Info ('Building: ' + $application.Package)
     Native "$rust\bin\cargo.exe" $buildArgs
@@ -480,7 +470,6 @@ try {
     Info 'Packaging: release'
     New-Item -ItemType Directory -Force "$root\release" | Out-Null
     Copy-Item -LiteralPath $exe -Destination "$root\release\$($application.Name).exe"
-    Copy-Item -LiteralPath "$deps\licenses.md" -Destination "$root\release\licenses.md"
     [IO.File]::WriteAllText("$root\release\_start.cmd", "@echo off`r`ncd /d ""%~dp0""`r`n$($application.Name).exe run ""%~dp0game_scarlett_master.exe"" --execute`r`n", [Text.Encoding]::ASCII)
     Info "Output: $root\release\$($application.Name).exe"
     Info "Build log: $log"
